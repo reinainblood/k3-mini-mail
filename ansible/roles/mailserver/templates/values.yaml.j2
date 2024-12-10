@@ -1,0 +1,29 @@
+domain: {{ mail_domain }}
+hostnames:
+  - {{ mail_hostname }}
+
+persistence:
+  enabled: true
+  storageClass: "local-path"
+  size: 10Gi
+
+pod:
+  dnsPolicy: "ClusterFirst"
+
+ssl:
+  enabled: true
+  provider: "letsencrypt"
+  letsencrypt:
+    email: {{ admin_email }}
+
+dovecot:
+  enabled: true
+
+postfix:
+  enabled: true
+
+spamassassin:
+  enabled: true
+
+clamav:
+  enabled: true

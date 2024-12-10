@@ -1,0 +1,45 @@
+# ansible/roles/k3s/tasks/main.yml
+---
+- name: Install required packages
+  apt:
+    name:
+      - curl
+      - python3-pip
+      - apt-transport-https
+      - ca-certificates
+    update_cache: yes
+
+- name: Create k3s service directory
+  file:
+    path: /etc/systemd/system/
+    state: directory
+    mode: '0755'
+
+- name: Template k3s service file
+  template:
+    src: k3s.service.j2
+    dest: /etc/systemd/system/k3s.service
+    mode: '0644'
+  notify: restart k3s
+
+- name: Download and install K3s
+  shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION={{ k3s_version }} sh -
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Enable and start k3s
+  systemd:
+    name: k3s
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Wait for node to be ready
+  shell: kubectl wait --for=condition=Ready node/{{ ansible_hostname }} --timeout=60s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: node_ready
+  retries: 30
+  delay: 10
+  until: node_ready.rc == 0

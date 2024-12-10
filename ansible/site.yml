@@ -1,0 +1,7 @@
+- hosts: all
+  become: true
+  collections:
+    - kubernetes.core
+  roles:
+    - k3s
+    - mailserver

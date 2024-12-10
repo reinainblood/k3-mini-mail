@@ -1,0 +1,7 @@
+mail_domain: "trustably.co"
+mail_hostname: "mail.trustably.co"
+admin_email: "admin@trustably.co"
+timezone: "UTC"
+
+k3s_version: "v1.27.1+k3s1"
+helm_version: "v3.12.0"

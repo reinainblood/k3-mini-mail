@@ -1,0 +1,63 @@
+# ansible/roles/mailserver/tasks/main.yml
+---
+- name: Ensure Python packages are installed
+  pip:
+    name:
+      - kubernetes
+      - PyYAML
+      - openshift
+    state: present
+  become: true
+- name: Install Helm
+  shell: |
+    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    chmod 700 get_helm.sh
+    ./get_helm.sh --version {{ helm_version }}
+    rm get_helm.sh
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Add docker-mailserver helm repo
+  shell: |
+    helm repo add docker-mailserver https://docker-mailserver.github.io/docker-mailserver-helm/
+    helm repo update
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Create values file from template
+  template:
+    src: values.yaml.j2
+    dest: /root/mailserver-values.yaml
+
+- name: Create mail namespace
+  kubernetes.core.k8s:
+    name: mail
+    kind: Namespace
+    state: present
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Deploy mailserver
+  kubernetes.core.helm:
+    name: mailserver
+    chart_ref: docker-mailserver/docker-mailserver
+    release_namespace: mail
+    create_namespace: true
+    values_files:
+      - /root/mailserver-values.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Wait for mailserver deployment
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: mail
+    label_selectors:
+      - app.kubernetes.io/name=docker-mailserver
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "True"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
